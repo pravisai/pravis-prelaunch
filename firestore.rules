@@ -1,0 +1,18 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow anyone to read and write to the waitlist collection.
+    // This is for demonstration purposes.
+    // For a production app, you would want to tighten these rules.
+    match /waitlist/{entry} {
+      allow read, write: if true;
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
