@@ -47,7 +47,7 @@ export function WaitlistForm() {
         source: 'landing_page'
       });
       setIsSubmitted(true);
-    } catch (err) {
+    } catch (err)      {
       console.error('Error saving email:', err);
       toast({
           title: "Submission Error",
