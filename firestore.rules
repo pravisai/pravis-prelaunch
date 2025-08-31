@@ -1,9 +1,15 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /waitlist/{email} {
-      allow read, write: if true;
+    match /waitlist/{document} {
+      // Allow anyone to sign up for the waitlist
+      allow create: if true;
+
+      // Allow anyone to count the waitlist entries
+      allow read: if true;
+
+      // Disallow updates and deletes
+      allow update, delete: if false;
     }
   }
 }

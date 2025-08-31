@@ -1,95 +1,111 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, onSnapshot, query } from 'firebase/firestore';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { addDoc, collection, onSnapshot } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Loader2, PartyPopper } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const formSchema = z.object({
+  email: z.string().email("Please enter a valid email address."),
+});
+
 export function WaitlistForm() {
-  const [email, setEmail] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [founderCount, setFounderCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [count, setCount] = useState<number | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     try {
-      const q = query(collection(db, "waitlist"));
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        setCount(querySnapshot.size);
-      }, (error) => {
-        console.error("Error fetching waitlist count:", error);
-        toast({
-            title: "Connection Error",
-            description: "Could not fetch live founder count. Your Firebase configuration might be missing or incorrect.",
-            variant: "destructive"
-        })
+      const unsub = onSnapshot(collection(db, "waitlist"), (snapshot) => {
+        setFounderCount(snapshot.size);
       });
-      return () => unsubscribe();
-    } catch (err) {
-      console.error("Firebase initialization error. Please check your configuration in src/lib/firebase.ts and your .env.local file.", err);
+      return () => unsub();
+    } catch (error) {
+      console.error("Error fetching founder count:", error);
+      toast({
+        title: "Connection Error",
+        description: "Could not fetch live founder count. Your Firebase configuration might be missing or incorrect.",
+        variant: "destructive",
+      });
     }
   }, [toast]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!email) return;
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
 
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-
     try {
-      await addDoc(collection(db, 'waitlist'), {
-        email: email,
-        timestamp: serverTimestamp(),
-        source: 'landing_page'
+      await addDoc(collection(db, "waitlist"), {
+        email: values.email,
+        createdAt: new Date(),
+        source: 'landing-page-presentation'
       });
-      setIsSubmitted(true);
-    } catch (err)      {
-      console.error('Error saving email:', err);
+      setIsSuccess(true);
+    } catch (error) {
+      console.error("Error adding to waitlist: ", error);
       toast({
-          title: "Submission Error",
-          description: "Something went wrong. Please check your Firebase setup and security rules, then try again.",
-          variant: "destructive"
-      })
+        title: "Submission Error",
+        description: "Could not add you to the waitlist. This could be due to a network issue or missing permissions.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  };
+  }
+
+  if (isSuccess) {
+    return (
+        <div className="text-center p-6 bg-black/50 rounded-lg backdrop-blur-sm">
+            <PartyPopper className="w-12 h-12 mx-auto text-primary animate-bounce"/>
+            <h2 className="mt-4 text-2xl font-bold text-white">You have ascended.</h2>
+            <p className="mt-2 text-gray-400">Welcome to the pantheon. We will be in touch.</p>
+        </div>
+      );
+  }
 
   return (
-    <>
-      {isSubmitted ? (
-        <div className="mt-6 bg-[#16202e] text-[#8bffd3] p-4 rounded-lg text-lg font-medium flex items-center justify-center gap-2">
-          <PartyPopper className="w-6 h-6" />
-          You're in! Check your inbox.
+    <div className="w-full max-w-md space-y-4 rounded-2xl bg-black/30 backdrop-blur-sm border border-primary/20 p-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="Enter your email to transcend"
+                      className="h-12 text-base text-center bg-gray-900/80 border-gray-700 text-white placeholder-gray-500 focus:ring-primary focus:border-primary"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-center" />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" disabled={isLoading} className="w-full h-12 text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground">
+              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+              Claim Your Divinity
+            </Button>
+          </form>
+        </Form>
+        <div className="text-center text-gray-400">
+            <p className="font-bold text-primary animate-pulse">{founderCount} have joined the pantheon</p>
         </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input
-            type="email"
-            id="email"
-            placeholder="Enter your email…"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="bg-input text-foreground border-none rounded-lg p-6 text-base placeholder:text-[#8a7fb8]/80 focus-visible:ring-2 focus-visible:ring-primary h-auto"
-          />
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="bg-gradient-to-r from-primary to-accent border-none rounded-lg text-white font-bold text-base py-3 h-auto tracking-wide hover:scale-[1.03] hover:-translate-y-0.5 hover:shadow-[0_8px_25px_hsl(var(--primary)/0.3)] transition-all duration-150"
-          >
-            {isLoading ? <Loader2 className="animate-spin" /> : 'Join as Founder'}
-          </Button>
-        </form>
-      )}
-      <div className="mt-10 text-sm text-[#9e9ac8]/75">
-        No spam — just early-access details.<br />
-        <span id="count">{count !== null ? `${count} founders and counting` : 'Building the future together'}</span>
-      </div>
-    </>
+    </div>
   );
 }

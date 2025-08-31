@@ -8,7 +8,7 @@ import { generateWelcomeEmail } from '@/ai/flows/generate-welcome-email';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Wand2 } from 'lucide-react';
+import { Loader2, Wand2, Gift } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
@@ -71,7 +71,7 @@ export function WelcomeEmailGenerator() {
               <FormItem>
                 <FormLabel>Keywords</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Pravis, special offer, digital mind" {...field} />
+                  <Input placeholder="e.g., Project Unveiling, special offer, digital mind" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
